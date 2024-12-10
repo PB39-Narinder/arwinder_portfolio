@@ -4,6 +4,7 @@ $(document).ready(function () {
         const navbar = $('.navbar');
         const hamburger = $('.hamburger');
         const menuItems = $('.menu-items');
+        const navLinks = $('.menu-items a');
         
         // Hamburger menu click
         hamburger.click(function() {
@@ -12,19 +13,43 @@ $(document).ready(function () {
             $('body').toggleClass('menu-open');
         });
         
-        // Close menu when clicking menu items
-        menuItems.find('a').click(function(e) {
+        // Handle menu item clicks
+        navLinks.click(function(e) {
             e.preventDefault();
             const target = $($(this).attr('href'));
             
+            // Remove active classes
             hamburger.removeClass('active');
             menuItems.removeClass('active');
             $('body').removeClass('menu-open');
             
-            // Simple scroll to section
+            // Update active link
+            navLinks.removeClass('active');
+            $(this).addClass('active');
+            
+            // Smooth scroll to section
             if (target.length) {
-                $('html, body').scrollTop(target.offset().top - navbar.outerHeight());
+                const offset = navbar.outerHeight() + 20;
+                const targetPosition = target.offset().top - offset;
+                
+                $('html, body').animate({
+                    scrollTop: targetPosition
+                }, 800);
             }
+        });
+
+        // Close menu when clicking outside
+        $(document).click(function(e) {
+            if (!$(e.target).closest('.navbar').length) {
+                hamburger.removeClass('active');
+                menuItems.removeClass('active');
+                $('body').removeClass('menu-open');
+            }
+        });
+
+        // Prevent clicks inside menu from closing it
+        $('.nav-wrapper').click(function(e) {
+            e.stopPropagation();
         });
     }
 
@@ -269,11 +294,17 @@ $(document).ready(function () {
     });
 
     function initImageSlider() {
+        const sliderContainer = $('.slider-container');
         const images = $('.profile-img');
         const dots = $('.dot');
         const prevBtn = $('.prev-btn');
         const nextBtn = $('.next-btn');
         let currentIndex = 0;
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        // Show initial image
+        showImage(0);
 
         function showImage(index) {
             images.removeClass('active');
@@ -304,14 +335,45 @@ $(document).ready(function () {
             });
         });
 
+        // Touch events for mobile swipe
+        sliderContainer.on('touchstart', function(e) {
+            touchStartX = e.touches[0].clientX;
+        });
+
+        sliderContainer.on('touchend', function(e) {
+            touchEndX = e.changedTouches[0].clientX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            const swipeThreshold = 50;
+            const swipeDistance = touchEndX - touchStartX;
+            
+            if (Math.abs(swipeDistance) > swipeThreshold) {
+                if (swipeDistance > 0) {
+                    prevImage();
+                } else {
+                    nextImage();
+                }
+            }
+        }
+
         // Auto slide every 5 seconds
         let autoSlide = setInterval(nextImage, 5000);
 
-        // Pause auto slide on hover
-        $('.profile-slider').hover(
+        // Pause auto slide on hover or touch
+        sliderContainer.hover(
             function() { clearInterval(autoSlide); },
             function() { autoSlide = setInterval(nextImage, 5000); }
         );
+
+        sliderContainer.on('touchstart', function() {
+            clearInterval(autoSlide);
+        });
+
+        sliderContainer.on('touchend', function() {
+            autoSlide = setInterval(nextImage, 5000);
+        });
     }
 
     // Add this to your initialization
@@ -319,6 +381,7 @@ $(document).ready(function () {
         // ... your existing code ...
         initImageSlider();
         initTypedText();
+        initScrollIndicator();
     });
 
     // Add this to your existing JavaScript
@@ -338,5 +401,62 @@ $(document).ready(function () {
         };
 
         new Typed('#typed-text', options);
+    }
+
+    // Scroll Progress Indicator
+    $(window).scroll(function() {
+        const scrollTop = $(window).scrollTop();
+        const docHeight = $(document).height() - $(window).height();
+        const scrollPercent = (scrollTop / docHeight) * 100;
+        $('.scroll-progress-bar').css('width', scrollPercent + '%');
+    });
+
+    // Copy Email Feature
+    $('.copy-email').click(function() {
+        const email = $(this).find('span').text();
+        navigator.clipboard.writeText(email).then(() => {
+            const tooltip = $(this).find('.tooltip');
+            tooltip.addClass('show').text('Email copied!');
+            
+            setTimeout(() => {
+                tooltip.removeClass('show');
+            }, 2000);
+        });
+    });
+
+    // Add this to your existing JavaScript
+    function initScrollIndicator() {
+        const scrollIndicator = $('.scroll-indicator');
+        const homeContent = $('.home-content');
+
+        // Show/hide scroll indicator based on scroll position
+        $(window).scroll(function() {
+            if ($(window).scrollTop() > 100) {
+                scrollIndicator.fadeOut();
+            } else {
+                scrollIndicator.fadeIn();
+            }
+        });
+
+        // Smooth scroll when clicking the indicator
+        scrollIndicator.click(function() {
+            const nextSection = homeContent.next('section');
+            if (nextSection.length) {
+                const offset = $('.navbar').outerHeight() + 20;
+                $('html, body').animate({
+                    scrollTop: nextSection.offset().top - offset
+                }, 800, 'easeInOutQuad');
+            }
+        });
+
+        // Add bounce animation on hover
+        scrollIndicator.hover(
+            function() {
+                $(this).css('animation-play-state', 'paused');
+            },
+            function() {
+                $(this).css('animation-play-state', 'running');
+            }
+        );
     }
 });
